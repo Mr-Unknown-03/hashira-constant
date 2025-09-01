@@ -3,79 +3,68 @@
 #include <string.h>
 #include <math.h>
 
-// Convert a single digit character to int value (supports 0-9, a-f)
-int digit_to_val(char c) {
-    if (c >= '0' && c <= '9') return c - '0';
-    else if (c >= 'a' && c <= 'f') return 10 + (c - 'a');
-    else if (c >= 'A' && c <= 'F') return 10 + (c - 'A');
-    return -1; // invalid digit
-}
-
-// Convert string in base 'base' to long long decimal
-unsigned long long base_to_dec(const char* str, int base) {
-    unsigned long long result = 0;
-    while (*str) {
-        int val = digit_to_val(*str);
-        if (val < 0 || val >= base) {
-            printf("Invalid digit '%c' for base %d\n", *str, base);
+// Convert string in given base (<= 36) to long long
+long long toDecimal(const char *val, int base) {
+    long long result = 0;
+    for (int i = 0; val[i]; i++) {
+        char c = val[i];
+        int digit;
+        if (c >= '0' && c <= '9') digit = c - '0';
+        else if (c >= 'a' && c <= 'z') digit = c - 'a' + 10;
+        else if (c >= 'A' && c <= 'Z') digit = c - 'A' + 10;
+        else {
+            fprintf(stderr, "Invalid digit %c\n", c);
             exit(1);
         }
-        result = result * base + val;
-        str++;
+        if (digit >= base) {
+            fprintf(stderr, "Digit %c out of range for base %d\n", c, base);
+            exit(1);
+        }
+        result = result * base + digit;
     }
     return result;
 }
 
-// Perform Lagrange interpolation at x=0 for k points
-long long lagrange_at_zero(int k, long long x[], long long y[]) {
-    double result = 0.0;
+// Compute f(0) with Lagrange interpolation
+long long lagrangeAtZero(int k, long long x[], long long y[]) {
+    long double f0 = 0.0L;
     for (int i = 0; i < k; i++) {
-        double term = (double)y[i];
+        long double xi = x[i];
+        long double yi = y[i];
+        long double num = 1.0L, den = 1.0L;
         for (int j = 0; j < k; j++) {
-            if (i != j) {
-                term *= -x[j];
-                term /= (x[i] - x[j]);
-            }
+            if (j == i) continue;
+            num *= -x[j];
+            den *= (xi - x[j]);
         }
-        result += term;
+        f0 += yi * (num / den);
     }
-    return llround(result);
+    return llround(f0); // round to nearest integer
 }
 
 int main() {
-    // Hardcoded input from first test case
-    int n = 4;
-    int k = 3;
-    
-    // Format: {x, base, value}
-    struct {
-        int x;
-        int base;
-        const char* val;
-    } points[] = {
-        {1, 10, "4"},
-        {2, 2, "111"},
-        {3, 10, "12"},
-        {6, 4, "213"}
-    };
+    int n, k;
+    scanf("%d %d", &n, &k); // first line: n k
 
-    long long xs[4], ys[4];
+    long long x[100], y[100];
+
     for (int i = 0; i < n; i++) {
-        xs[i] = points[i].x;
-        ys[i] = base_to_dec(points[i].val, points[i].base);
+        int xi, base;
+        char value[256];
+        scanf("%d %d %s", &xi, &base, value);
+        x[i] = xi;
+        y[i] = toDecimal(value, base);
     }
 
-    // Use only first k points (as per problem)
-    long long xk[3], yk[3];
+    // Only use first k points
+    long long xk[100], yk[100];
     for (int i = 0; i < k; i++) {
-        xk[i] = xs[i];
-        yk[i] = ys[i];
+        xk[i] = x[i];
+        yk[i] = y[i];
     }
 
-    long long secret = lagrange_at_zero(k, xk, yk);
-    printf("Secret c (Test case 1) = %lld\n", secret);
+    long long c = lagrangeAtZero(k, xk, yk);
+    printf("%lld\n", c);
+
     return 0;
 }
-
-
-
